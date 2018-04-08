@@ -24,8 +24,7 @@
       <option value ="100">100ms</option>
       <option value="1000" selected="selected">1000ms</option>
     </select>
-    <button type="button" onclick="start();">开始</button>
-    <button type="button" onclick="pause();">暂停</button>
+    <button type="button" onclick="start(this);">开始</button>
     <button type="button" onclick="location.reload();">刷新</button>
     <canvas id="world">
         您的浏览器不支持Canvas标签，请在现代浏览器下查看效果
@@ -252,13 +251,16 @@
         setMatter(51, 5, "water");
 
         // 开始运行
-        function start() {
-            var obj = document.getElementById("interval");
-            interval = parseInt(obj.options[obj.selectedIndex].value);
-            t = setTimeout(chemistry, interval);
-        }
-        function pause() {
-            clearTimeout(t);
+        function start(obj) {
+            if (obj.innerText == "暂停") {
+                clearTimeout(t);
+                obj.innerText = "开始";
+            } else {
+                var select = document.getElementById("interval");
+                interval = parseInt(select.options[select.selectedIndex].value);
+                t = setTimeout(chemistry, interval);
+                obj.innerText = "暂停";
+            }
         }
     </script>
 </body>
