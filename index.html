@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>EvolveGame</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        #world {
+            display: block;
+            margin: 0 auto;
+            width: 600px;
+            height: 600px;
+            background: #FFF;
+            border:1px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <select id="interval">
+      <option value ="10">10ms</option>
+      <option value ="100">100ms</option>
+      <option value="1000" selected="selected">1000ms</option>
+    </select>
+    <button type="button" onclick="start();">开始</button>
+    <button type="button" onclick="pause();">暂停</button>
+    <button type="button" onclick="location.reload();">刷新</button>
+    <canvas id="world">
+        您的浏览器不支持Canvas标签，请在现代浏览器下查看效果
+    </canvas>
+    <script>
+
+        var canvas = document.getElementById("world");
+
+        c = canvas.getContext("2d");
+        W = canvas.width = 600;
+        H = canvas.height = 600;
+        pl = 10; // Planck Length
+        maxH = H / pl;
+        maxW = W / pl;
+        matterList = new Array();
+        for (var x = 0; x < maxW; x++) {
+            for (var y = 0; y < maxH; y++) {
+                matter = new Object();
+                matter.x = x;
+                matter.y = y;
+                matter.type = "vacuum";
+                matterList.push(matter);
+            }
+        }
+
+        // 封装工具方法
+        function produce(type) {
+            // 返回相生物质
+            switch(type){
+                case "wood":
+                  var ret = "fire";
+                  break;
+                case "fire":
+                  var ret = "soil";
+                  break;
+                case "soil":
+                  var ret = "gold";
+                  break;
+                case "gold":
+                  var ret = "water";
+                  break;
+                case "water":
+                  var ret = "wood";
+                  break;
+                default:
+                  var ret = "vacuum";
+            }
+            return ret;
+        }
+        function restraint(type) {
+            // 返回相克物质
+            switch(type){
+                case "wood":
+                  var ret = "soil";
+                  break;
+                case "fire":
+                  var ret = "gold";
+                  break;
+                case "soil":
+                  var ret = "water";
+                  break;
+                case "gold":
+                  var ret = "wood";
+                  break;
+                case "water":
+                  var ret = "fire";
+                  break;
+                default:
+                  var ret = "vacuum";
+            }
+            return ret;
+        }
+        function restrainted(type) {
+            // 返回克type的物质
+            switch(type){
+                case "soil":
+                  var ret = "wood";
+                  break;
+                case "gold":
+                  var ret = "fire";
+                  break;
+                case "water":
+                  var ret = "soil";
+                  break;
+                case "wood":
+                  var ret = "gold";
+                  break;
+                case "fire":
+                  var ret = "water";
+                  break;
+                default:
+                  var ret = "vacuum";
+            }
+            return ret;
+        }
+        function color(type) {
+            // 返回物质对应的颜色
+            switch(type){
+                case "wood":
+                  var style = "green";
+                  break;
+                case "fire":
+                  var style = "red";
+                  break;
+                case "soil":
+                  var style = "brown";
+                  break;
+                case "gold":
+                  var style = "yellow";
+                  break;
+                case "water":
+                  var style = "blue";
+                  break;
+                default: // type = vacuum
+                  var style = "white";
+            }
+            return style;
+        }
+        function fillDiamond(matter) {
+            // 将物质填充到方格中
+            c.fillStyle = color(matter.type);
+            c.fillRect(pl*matter.x, pl*matter.y, pl, pl);
+        }
+        function setMatter(x, y, type) {
+            var matter = getMatter(x, y);
+            matter.type = type;
+            fillDiamond(matter);
+        }
+        function getMatter(x, y) {
+            for (matter of matterList) {
+                if (matter.x == x && matter.y == y) {
+                    return matter;
+                }
+            }
+        }
+        function aroundDiamond(x, y) {
+            // 取一个方块周围的方块
+            aroundList = new Array();
+            if (x > 0){
+                if (y > 0) {
+                    aroundList.push(getMatter(x-1, y-1));
+                }
+                aroundList.push(getMatter(x-1, y));
+                if (y+1 < maxH) {
+                    aroundList.push(getMatter(x-1, y+1));
+                }
+            }
+            if (x+1 < maxW){
+                if (y > 0) {
+                    aroundList.push(getMatter(x+1, y-1));
+                }
+                aroundList.push(getMatter(x+1, y));
+                if (y+1 < maxH) {
+                    aroundList.push(getMatter(x+1, y+1));
+                }
+            }
+            if (y > 0) {
+                aroundList.push(getMatter(x, y-1));
+            }
+            if (y+1 < maxH) {
+                aroundList.push(getMatter(x, y+1));
+            }
+            return aroundList;
+        }
+        function aroundVacuum(x, y) {
+            var vacuumList = new Array();
+            var aroundList = aroundDiamond(x, y);
+            for (around of aroundList) {
+                if (around.type == "vacuum") {
+                    vacuumList.push(around);
+                }
+            }
+            return vacuumList;
+        }
+        function aroundRestraint(matter) {
+            // 返回在指定物质周围且被指定物质克的物质
+            var aroundList = aroundDiamond(matter.x, matter.y);
+            var restraintType = restraint(matter.type);
+            var restraintList = new Array();
+            for (around of aroundList) {
+                if (around.type == restraintType) {
+                    restraintList.push(around);
+                }
+            }
+            return restraintList;
+        }
+        function randomN(n) {
+            // 返回 0~n-1 之间的随机整数
+            return Math.floor(Math.random()*n);
+        }
+        function randomMatter(x, y) {
+            // 根据(x,y)处的物质随机在周围生成相生物质
+            var matter = getMatter(x, y);
+            if (matter.type != "vacuum") {
+                // 相生
+                var vacuumList = aroundVacuum(x, y);
+                if (vacuumList.length > 0) {
+                    var rand = randomN(vacuumList.length);
+                    vacuumList[rand].type = produce(matter.type);
+                    fillDiamond(vacuumList[rand]);
+                }
+                // 相克
+                var restraintList = aroundRestraint(matter);
+                for (var restraint of restraintList) {
+                    restraint.type = "vacuum";
+                    fillDiamond(restraint);
+                }
+            }
+        }
+        function chemistry() {
+            for (var x = 0; x < maxW; x++) {
+                for (var y = 0; y < maxH; y++) {
+                    randomMatter(x, y);
+                }
+            }
+            t = setTimeout(chemistry, interval);
+        }
+
+        // 初始化
+        setMatter(1, 1, "wood");
+        setMatter(1, 32, "fire");
+        setMatter(39, 3, "soil");
+        setMatter(14, 43, "gold");
+        setMatter(51, 5, "water");
+
+        // 开始运行
+        function start() {
+            var obj = document.getElementById("interval");
+            interval = parseInt(obj.options[obj.selectedIndex].value);
+            t = setTimeout(chemistry, interval);
+        }
+        function pause() {
+            clearTimeout(t);
+        }
+    </script>
+</body>
+</html>
